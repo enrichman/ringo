@@ -23,7 +23,7 @@ func main() {
 
 	if *showVersion {
 		fmt.Print(Version)
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	if _, err := os.Open(secretsFilename); err != nil {
