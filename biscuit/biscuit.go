@@ -2,41 +2,43 @@ package biscuit
 
 import (
 	"bytes"
-	"log"
-	"os"
 	"os/exec"
+	"sort"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
-type Client struct {
-	filename string
+func KmsCallerIdentity() error {
+	cmd := exec.Command("biscuit", "kms", "get-caller-identity")
+	_, err := handleCommand(cmd)
+	return err
 }
 
-func NewClient(filename string) (*Client, error) {
-	if _, err := os.Open(filename); err != nil {
+func List(filename string) ([]string, error) {
+	out, err := handleCommand(exec.Command("biscuit", "list", "-f", filename))
+	if err != nil {
 		return nil, err
 	}
-	return &Client{filename: filename}, nil
+
+	secrets := strings.Split(out, "\n")
+	sort.Strings(secrets)
+
+	return secrets, nil
 }
 
-func (c *Client) List() ([]string, error) {
-	out, err := exec.Command("biscuit", "list", "-f", c.filename).Output()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return strings.Split(strings.TrimSpace(string(out)), "\n"), nil
+func Get(filename, secret string) (string, error) {
+	cmd := exec.Command("biscuit", "get", "-f", filename, secret)
+	return handleCommand(cmd)
 }
 
-func (c *Client) Get(secret string) (string, error) {
-	cmd := exec.Command("biscuit", "get", "-f", c.filename, secret)
+func handleCommand(cmd *exec.Cmd) (string, error) {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
 	out, err := cmd.Output()
 	if err != nil {
-		return stderr.String(), err
+		return "", errors.New(stderr.String())
 	}
-
-	return string(out), nil
+	return strings.TrimSpace(string(out)), nil
 }
